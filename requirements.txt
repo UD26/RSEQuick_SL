@@ -1,0 +1,9 @@
+ee
+pandas
+numpy
+matplotlib
+folium
+geehydro
+scikit-image
+streamlit
+streamlit-folium
