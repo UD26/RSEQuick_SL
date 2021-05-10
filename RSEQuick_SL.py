@@ -2,31 +2,21 @@
 # coding: utf-8
 
 
-
-import pandas as pd
-import numpy as np
+from PIL import Image
+import base64
 import time
 import streamlit as st
-import plotly.express as px
 from datetime import datetime
 import folium
 from streamlit_folium import folium_static
 import ee
-import pandas as pd
-from io import StringIO
 import urllib, io, os
 from skimage import filters
 import numpy as np
-import matplotlib
+import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import matplotlib.patches as patches
 import geehydro
-from IPython.display import display
-import ipywidgets as widgets
-from ipywidgets import GridspecLayout, Layout
-from PIL import Image
-import base64
+
 
 st.set_page_config(
     page_title="RSEQuick",
@@ -253,6 +243,7 @@ def estimateRS(image_collection,geometry,start,stop,spillway_storage,path,row,cl
         sorted_df['Cumulative estimated capacity']= sorted_df['Estimated capacity'].cumsum()
         sorted_df['Cumulative original capacity']= sorted_df['Original capacity'].cumsum()
         
+        st.markdown("### Results:")
         st.dataframe(sorted_df)
                 
         
@@ -279,26 +270,49 @@ def estimateRS(image_collection,geometry,start,stop,spillway_storage,path,row,cl
         ax.set_ylabel('Capacity (MCM)')
         ax.set_title('Revised Elevation-Capacity curves');
         
+
         if name!=None:
-            plt.savefig("Revised curves_"+str(name)+".jpg", dpi=300, bbox_inches='tight')
-            st.markdown(get_binary_file_downloader_html("Revised curves_"+str(name)+".jpg", 'Download plot'), unsafe_allow_html=True)
+            plt.savefig("Revised curves_"+str(name)+".jpg", dpi=200, bbox_inches='tight')
             #To download file
             if download:
                 sorted_df.to_csv('Sedimentation_analysis_'+str(name)+'.csv', header=True, index=True)
-                st.markdown(get_binary_file_downloader_html('Sedimentation_analysis_'+str(name)+'.csv', 'Download data'), unsafe_allow_html=True)
+                cp, cd,_ = st.beta_columns(( 1, 1, 5))
+                with cp:
+                    st.markdown(get_binary_file_downloader_html("Revised curves_"+str(name)+".jpg", 'Plot'), unsafe_allow_html=True)            
+                with cd:
+                    st.markdown(get_binary_file_downloader_html('Sedimentation_analysis_'+str(name)+'.csv', 'Data'), unsafe_allow_html=True)
 
         else:
-            plt.savefig("Revised curves.jpg", dpi=300, bbox_inches='tight')
-            st.markdown(get_binary_file_downloader_html("Revised curves.jpg", 'Download plot'), unsafe_allow_html=True)
+            plt.savefig("Revised curves.jpg", dpi=200, bbox_inches='tight')
             #To download file
             if download:
                 sorted_df.to_csv('Sedimentation_analysis.csv', header=True, index=True)
-                st.markdown(get_binary_file_downloader_html('Sedimentation_analysis.csv', 'Download data'), unsafe_allow_html=True)
-        st.pyplot(fig)
+      
+                cp, cd,_ = st.beta_columns(( 1, 1, 5))
+                with cp:
+                    st.markdown(get_binary_file_downloader_html("Revised curves.jpg", 'Plot'), unsafe_allow_html=True)            
+                with cd:
+                    st.markdown(get_binary_file_downloader_html('Sedimentation_analysis.csv', 'Data'), unsafe_allow_html=True)
 
+        Map = folium.Map(location=[23.7175,85.8238], zoom_start=12,width="100%",height="100%")
+        
+        Map.setOptions('HYBRID')
+        ndwiParams = {'min': -1, 'max': 1, 'palette': ['green', 'white', 'blue']}
+        
+        for num,img in enumerate(ndwi_list):
+            Map.addLayer(img.clip(shapefile), ndwiParams, 'NDWI '+str(Dates_list[num]))
+        
+        Map.setControlVisibility(layerControl=True, fullscreenControl=True, latLngPopup=True)
 
+        c11, c21 = st.beta_columns(( 1, 2))	
+        
+        with c11: 
+            st.pyplot(fig)
+        
+        with c21:
+            folium_static(Map) 
 
-########User Interface#####################
+########Input User Interface#####################
 
 
 with st.form("my_form"):
@@ -365,12 +379,12 @@ with st.form("my_form"):
         duration = st.slider(
             'Study duration', 0, 100, 6)
        
-        name = st.text_input('Reservoir ID', 'Name')
+        name = st.text_input('Reservoir ID', 'Optional')
         
 
         download = st.checkbox('Download files')
 
-    submit_button = st.form_submit_button(label='Run')
+    submit_button = st.form_submit_button(label='Compute')
     
 
     if submit_button:
@@ -389,18 +403,6 @@ with st.form("my_form"):
             duration,
             download,
             name)
-        
-        Map = folium.Map(location=[23.7175,85.8238], zoom_start=12,width="100%",height="100%")
-        
-        Map.setOptions('HYBRID')
-        ndwiParams = {'min': -1, 'max': 1, 'palette': ['green', 'white', 'blue']}
-        
-        for num,img in enumerate(ndwi_list):
-            Map.addLayer(img.clip(shapefile), ndwiParams, 'NDWI '+str(Dates_list[num]))
-        
-        Map.setControlVisibility(layerControl=True, fullscreenControl=True, latLngPopup=True)
-
-        folium_static(Map)   
         
     else:
         st.write('Click here to start')
